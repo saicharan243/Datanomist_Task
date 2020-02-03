@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title></title>
+<link rel="stylesheet"
+	href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+
+<!-- jQuery library -->
+<script
+	src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+<!-- Latest compiled JavaScript -->
+<script
+	src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<!-- <script src="https://cdn.jsdelivr.net/jquery.validation/1.16.0/jquery.validate.min.js"></script> -->
+<style type="text/css">
+.error {
+	color: red;
+}
+</style>
+<script type="text/javascript">
+	// Handle click event on Update button
+	function updateClick() {
+		var first_name = $('#firstName').val();
+		var last_name = $('#lastName').val();
+		var gender = $("input[name='gender']:checked").val();
+		var password = $('#password').val();
+		var acceptpolicy = $('#acceptPolicy').val();
+		$(".error").remove();
+		var isValid = true;
+		if (first_name.length < 1) {
+			isValid = false;
+			$('#firstName').after(
+					'<span class="error">This field is required</span>');
+		}
+		// 		if (gender.length < 1) {
+		// 			isValid = false;
+		// 			$('#gender').after(
+		// 					'<span class="error">This field is required</span>');
+		// 		}
+		if (last_name.length < 1) {
+			isValid = false;
+			$('#lastName').after(
+					'<span class="error">This field is required</span>');
+		}
+		if (password.length < 8) {
+			isValid = false;
+			$('#password')
+					.after(
+							'<span class="error">Password must be at least 8 characters long</span>');
+		}
+
+		if (isValid) {
+			user = new Object();
+			user.userId = $("#userId").val();
+			user.firstName = $("#firstName").val();
+			user.lastName = $("#lastName").val();
+			user.password = $("#password").val();
+			user.userName = $("#userName").val();
+			user.gender = $("input[name='gender']:checked").val();
+			user.acceptPolicy = $("input[name='acceptPolicy']:checked").val();
+			if ($("#updateButton").text().trim() == "Add") {
+				userAdd(user);
+			} else {
+				userUpdate(user);
+			}
+		}
+	}
+
+	function userAdd(user) {
+		$.ajax({
+			url : "/api/user",
+			type : 'POST',
+			contentType : "application/json;charset=utf-8",
+			data : JSON.stringify(user),
+			success : function(user) {
+				
+				$("#result").append("div").addClass("alert alert-success")
+						.text("User added successfully");
+				// 				$("#result").append('Success : .');
+				userAddSuccess(user);
+			},
+			error : function(request, message, error) {
+				handleException(request, message, error);
+			}
+		});
+	}
+
+	function userAddSuccess(user) {
+		userAddRow(user);
+		formClear();
+	}
+
+	function formClear() {
+		$("#userId").val("");
+		$("#firstName").val("");
+		$("#lastName").val("");
+		$("#userName").val("");
+		$("#password").val("");
+		$("#gender").prop("checked", false);
+		$("#acceptPolicy").prop("checked", false);
+
+	}
+	function addClick() {
+		formClear();
+	}
+
+	function userUpdate(user) {
+		$.ajax({
+			url : "/api/user",
+			type : 'PUT',
+			contentType : "application/json;charset=utf-8",
+			data : JSON.stringify(user),
+			success : function(user) {
+				$("#result").append("div").addClass("alert alert-success")
+						.text("User updated successfully");
+				$("#result").delay(5000).fadeOut('slow');
+
+				userUpdateSuccess(user);
+			},
+			error : function(request, message, error) {
+				handleException(request, message, error);
+			}
+		});
+	}
+
+	function userUpdateSuccess(user) {
+		userUpdateInTable(user);
+	}
+
+	function userUpdateInTable(user) {
+		// Find user in <table>
+		var row = $("#userTable button[data-userid='" + user.userId + "']")
+				.parents("tr")[0];
+		// Add changed user to table
+		$(row).after(userBuildTableRow(user));
+		// Remove original user
+		$(row).remove();
+		formClear(); // Clear form fields
+		// Change Update Button Text
+		$("#updateButton").text("Add");
+	}
+
+	function userDelete(ctl) {
+		var id = $(ctl).data("userid");
+
+		$.ajax({
+			url : "/api/user/" + id,
+			type : 'DELETE',
+			success : function(user) {
+				$("#result").append("div").addClass("alert alert-success")
+						.text("User deleted successfully");
+				$(ctl).parents("tr").remove();
+			},
+			error : function(request, message, error) {
+				handleException(request, message, error);
+			}
+		});
+	}
+
+	function userList() {
+		// Call Web API to get a list of user
+		$.ajax({
+			url : '/api/user/',
+			type : 'GET',
+			dataType : 'json',
+			success : function(users) {
+				// 				userListSuccess(users);
+			},
+			error : function(request, message, error) {
+				handleException(request, message, error);
+			}
+		});
+	}
+	function userListSuccess(users) {
+		// Iterate over the collection of data
+		$.each(users, function(index, user) {
+			// Add a row to the user table
+			userAddRow(user);
+		});
+	}
+
+	function userAddRow(user) {
+		// Check if <tbody> tag exists, add one if not
+		$('#userTable tbody').remove();
+		if ($("#userTable tbody").length == 0) {
+			$("#userTable").append("<tbody></tbody>");
+		}
+		// Append row to <table>
+		$("#userTable tbody").append(userBuildTableRow(user));
+	}
+
+	function userBuildTableRow(user) {
+		var ret = "<tr>" + "<td>" + user.firstName + " " + user.lastName
+				+ "</td>" + "<td>" + user.gender + "</td>" + "<td>"
+				+ "<button type='button' " + "onclick='userGet(this);' "
+				+ "class='btn btn-default' " + "data-userid='" + user.userId
+				+ "'>" + "<span class='glyphicon glyphicon-edit' />"
+				+ "</button>" + "<button type='button' "
+				+ "onclick='userDelete(this);' " + "class='btn btn-default' "
+				+ "data-userid='" + user.userId + "'>"
+				+ "<span class='glyphicon glyphicon-remove' />" + "</button>"
+				+ "</td>" + "</tr>";
+
+		return ret;
+	}
+
+	function handleException(request, message, error) {
+		var msg = "";
+		msg += "Code: " + request.status + "\n";
+		msg += "Text: " + request.statusText + "\n";
+		if (request.responseJSON != null) {
+			msg += "Message" + request.responseJSON.Message + "\n";
+		}
+		$("#result").append("div").addClass("alert alert-danger").text(msg);
+	}
+
+	$(document).ready(function() {
+		userList();
+	});
+
+	function userGet(ctl) {
+		// Get user id from data- attribute
+		var id = $(ctl).data("userid");
+		alert(id);
+		// Store user id in hidden field
+		$("#userId").val(id);
+
+		// Call Web API to get a list of users
+		$.ajax({
+			url : "/api/user/" + id,
+			type : 'GET',
+			dataType : 'json',
+			success : function(user) {
+				userToFields(user);
+
+				// Change Update Button Text
+				$("#updateButton").text("Update");
+			},
+			error : function(request, message, error) {
+				handleException(request, message, error);
+			}
+		});
+	}
+
+	function userToFields(user) {
+		$("#userId").val(user.userId);
+		$("#firstName").val(user.firstName);
+		$("#lastName").val(user.lastName);
+		$("#userName").val(user.userName);
+		$("#password").val(user.password);
+		if (user.gender == "Male") {
+			$("#gender").prop("checked", true);
+		} else if (user.gender == "Female") {
+			$("#gender").prop("checked", true);
+		}
+		if (user.acceptPolicy == 1) {
+			$("#acceptPolicy").prop("checked", true);
+		} else {
+			$("#acceptPolicy").prop("checked", false);
+		}
+	}
+	$(document).ready(function(){
+        $("#userName").change(function(){
+        var username = $("#userName").val();
+		if(username.length>1){
+          $.ajax({
+        	url : "/api/user/CheckUser/" + username,
+  			type : 'GET',
+            success:function(msg){
+//             	alert(msg)
+            	var ivld=msg;
+                    if(ivld){
+                    	
+                    	$("#userName").val("");
+                    	 $("#userName").focus();
+                    	 $("#userName").css('border-color', 'red');
+                        $("#userName").attr("placeholder", "Username already exists");
+                    }else{
+                    	$("#userName").css('border-color', '');
+                    	$("#userName").attr("placeholder", "Please enter username");
+                    }
+                    
+                }
+             });
+}
+        });
+        
+     });
+</script>
+</head>
+<body>
+	<div class="container">
+		<div>
+			<!-- Text input-->
+			<div class="row">
+				<div class="col-sm-12">
+
+					<div class="panel panel-primary">
+						<div class="panel-heading">User Information</div>
+					</div>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-12">
+					<div id="result"></div>
+				</div>
+				<div class="col-sm-6">
+
+					<div class="panel panel-info">
+						<div class="panel-heading">
+							<b>User Information</b>
+
+						</div>
+						<input type="hidden" id="userId" value="0" />
+						<div class="panel-body">
+							<div class="form-group">
+								<label for="firstName">First Name</label> <input type="text"
+									id="firstName" required class="form-control" />
+							</div>
+							<div class="form-group">
+								<label for="lastName">Last Name </label> <input type="text"
+									id="lastName" required class="form-control" />
+							</div>
+							<div class="form-group">
+								<label for="userName">User Name </label> <input type="text"
+									id="userName" required onblur="" class="form-control" />
+							</div>
+							<div class="form-group">
+								<label for="password">Password</label> <input type="password"
+									id="password" required class="form-control" />
+							</div>
+							<div class="form-group">
+								<label for="gender">Gender</label> <input type="radio"
+									name="gender" id="male" value="Male" checked="checked"/><label>Male</label><input
+									type="radio" id="female" name="gender" value="Female" /><label>Female</label>
+							</div>
+							<div class="form-group">
+								<label for="acceptPolicy">Accept Policy :</label> <input
+									type="checkbox" name="acceptPolicy" id="acceptPolicy" value="1" />
+							</div>
+						</div>
+						<div class="panel-footer">
+							<div class="row">
+								<div class="col-xs-12">
+									<button type="button" id="updateButton" class="btn btn-primary"
+										onclick="updateClick();">Add</button>
+									<input type="reset" onclick="formClear();" class="btn btn-danger" />
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-sm-6">
+					<div class="panel panel-info">
+						<div class="panel-heading">
+							<b>User List</b>
+						</div>
+
+						<table id="userTable"
+							class="table table-bordered
+                 table-condensed table-striped">
+							<thead>
+								<tr>
+									<th>Name</th>
+									<th>Gender</th>
+									<th>Action</th>
+								</tr>
+							</thead>
+						</table>
+					</div>
+				</div>
+
+			</div>
+
+			<div class="row">
+				<div class="col-sm-6">
+					<hr>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
